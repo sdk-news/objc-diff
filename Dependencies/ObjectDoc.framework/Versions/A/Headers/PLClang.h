@@ -6,6 +6,7 @@
 #import <Foundation/Foundation.h>
 
 extern NSString * const PLClangErrorDomain;
+extern NSString * const PLClangCXErrorDomain;
 
 /**
  * Error codes in the PLClangErrorDomain.

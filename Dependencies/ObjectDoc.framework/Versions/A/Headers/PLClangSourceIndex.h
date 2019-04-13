@@ -101,7 +101,49 @@ typedef NS_OPTIONS(NSUInteger, PLClangTranslationUnitCreationOptions) {
      * Specifies that brief documentation comments should be included in the set
      * of code completions returned from a translation unit.
      */
-    PLClangTranslationUnitCreationIncludeBriefCommentsInCodeCompletion = 1UL << 6
+    PLClangTranslationUnitCreationIncludeBriefCommentsInCodeCompletion = 1UL << 6,
+    
+    /**
+     * Used to indicate that the precompiled preamble should be created on
+     * the first parse. Otherwise it will be created on the first reparse. This
+     * trades runtime on the first parse (serializing the preamble takes time) for
+     * reduced runtime on the second parse (can now reuse the preamble).
+     */
+    PLClangTranslationUnitCreationCreatePreambleOnFirstParse = 1UL << 7,
+    
+    /**
+     * Do not stop processing when fatal errors are encountered.
+     *
+     * When fatal errors are encountered while parsing a translation unit,
+     * semantic analysis is typically stopped early when compiling code. A common
+     * source for fatal errors are unresolvable include files. For the
+     * purposes of an IDE, this is undesirable behavior and as much information
+     * as possible should be reported. Use this flag to enable this behavior.
+     */
+    PLClangTranslationUnitCreationKeepGoing = 1UL << 8,
+    
+    /**
+     * Sets the preprocessor in a mode for parsing a single file only.
+     */
+    PLClangTranslationUnitCreationSingleFileParse = 1UL << 9,
+    
+    /**
+     * Used in combination with CXTranslationUnit_SkipFunctionBodies to
+     * constrain the skipping of function bodies to the preamble.
+     *
+     * The function bodies of the main file are not skipped.
+     */
+    PLClangTranslationUnitCreationLimitSkipFunctionBodiesToPreamble = 1UL << 10,
+    
+    /**
+     * Used to indicate that attributed types should be included in CXType.
+     */
+    PLClangTranslationUnitCreationIncludeAttributedTypes = 1UL << 11,
+    
+    /**
+     * Used to indicate that implicit attributes should be visited.
+     */
+    PLClangTranslationUnitCreationVisitImplicitAttributes = 1UL << 12,
 };
 
 @interface PLClangSourceIndex : NSObject

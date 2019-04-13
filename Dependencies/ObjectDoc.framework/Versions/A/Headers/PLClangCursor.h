@@ -8,6 +8,7 @@
 #import "PLClangComment.h"
 #import "PLClangSourceRange.h"
 #import "PLClangType.h"
+#import "PLClangIndexDeclaration.h"
 @class PLClangCursor;
 
 /**
@@ -648,6 +649,13 @@ typedef NS_ENUM(NSUInteger, PLClangCursorKind) {
      * An Objective-C an @available() check.
      */
     PLClangCursorKindObjCAvailabilityCheckExpression          = 148,
+    
+    /**
+     * Fixed point literal
+     */
+    PLClangCursorKindFixedPointLiteral = 149,
+    
+    PLClangCursorKindLastExpr = PLClangCursorKindFixedPointLiteral,
 
     /* Statements */
 
@@ -1180,6 +1188,98 @@ typedef NS_ENUM(NSUInteger, PLClangCursorKind) {
      * A dllimport attribute.
      */
     PLClangCursorKindDLLImportAttribute                       = 419,
+    
+    /**
+     * A ns_returns_retained attribute. (NS_RETURNS_RETAINED)
+     */
+    PLClangCursorKindNSReturnsRetained = 420,
+    
+    /**
+     * A ns_returns_not_retained attribute. (NS_RETURNS_NOT_RETAINED)
+     */
+    PLClangCursorKindNSReturnsNotRetained = 421,
+    
+    /**
+     * A ns_returns_autoreleased attribute.
+     */
+    PLClangCursorKindNSReturnsAutoreleased = 422,
+    
+    /**
+     * A ns_consumes_self attribute. (NS_REPLACES_RECEIVER)
+     */
+    PLClangCursorKindNSConsumesSelf = 423,
+    
+    /**
+     * A ns_consumed attribute. (NS_RELEASES_ARGUMENT)
+     */
+    PLClangCursorKindNSConsumed = 424,
+    
+    /**
+     * A __objc_exception__ attribute.
+     */
+    PLClangCursorKindObjCException = 425,
+    
+    /**
+     * A NSObject attribute. (__attribute__((NSObject))
+     */
+    PLClangCursorKindObjCNSObject = 426,
+    
+    /**
+     * A objc_independent_class attribute.
+     */
+    PLClangCursorKindObjCIndependentClass = 427,
+    
+    /**
+     * A objc_precise_lifetime attribute. (NS_VALID_UNTIL_END_OF_SCOPE)
+     */
+    PLClangCursorKindObjCPreciseLifetime = 428,
+    
+    /**
+     * A objc_returns_inner_pointer attribute. (NS_RETURNS_INNER_POINTER)
+     */
+    PLClangCursorKindObjCReturnsInnerPointer = 429,
+    
+    /**
+     * A objc_requires_super attribute. (NS_REQUIRES_SUPER)
+     */
+    PLClangCursorKindObjCRequiresSuper = 430,
+    
+    /**
+     * A objc_root_class attribute. (NS_ROOT_CLASS)
+     */
+    PLClangCursorKindObjCRootClass = 431,
+    
+    /**
+     * A objc_subclassing_restricted attribute.
+     */
+    PLClangCursorKindObjCSubclassingRestricted = 432,
+    
+    /**
+     * A objc_protocol_requires_explicit_implementation attribute. (NS_PROTOCOL_REQUIRES_EXPLICIT_IMPLEMENTATION)
+     */
+    PLClangCursorKindObjCExplicitProtocolImpl = 433,
+    
+    /**
+     * A objc_designated_initializer attribute. (NS_DESIGNATED_INITIALIZER)
+     */
+    PLClangCursorKindObjCDesignatedInitializer = 434,
+    
+    /**
+     * A objc_runtime_visible attribute.
+     */
+    PLClangCursorKindObjCRuntimeVisible = 435,
+    
+    /**
+     * A objc_boxable attribute. (CG_BOXABLE)
+     */
+    PLClangCursorKindObjCBoxable = 436,
+    
+    /**
+     * A flag_enum attribute. (NS_OPTIONS)
+     */
+    PLClangCursorKindFlagEnum = 437,
+    
+    PLClangCursorKindLastAttr = PLClangCursorKindFlagEnum,
 
     /* Preprocessing */
 
@@ -1342,14 +1442,11 @@ typedef NS_OPTIONS(NSUInteger, PLClangObjCPropertyAttributes) {
     /** The property's value can be null. */
     PLClangObjCPropertyAttributeNullable         = 1UL << 13,
 
-    /** The property is reset to a default value when null is assigned. */
-    PLClangObjCPropertyAttributeNullResettable   = 1UL << 14,
-
     /** Whether the property's value can be null is explicitly unspecified. */
-    PLClangObjCPropertyAttributeNullUnspecified  = 1UL << 15,
+    PLClangObjCPropertyAttributeNullUnspecified  = 1UL << 14,
 
     /** The property is a class property. */
-    PLClangObjCPropertyAttributeClass            = 1UL << 16,
+    PLClangObjCPropertyAttributeClass            = 1UL << 15,
 };
 
 /**
@@ -1456,12 +1553,13 @@ typedef PLClangCursorVisitResult (^PLClangCursorVisitorBlock)(PLClangCursor *cur
 @property(nonatomic, readonly) int bitFieldWidth;
 
 @property(nonatomic, readonly) PLClangObjCPropertyAttributes objCPropertyAttributes;
-@property(nonatomic, readonly) PLClangCursor *objCPropertyGetter;
-@property(nonatomic, readonly) PLClangCursor *objCPropertySetter;
+@property(nonatomic, readonly) NSString *objCPropertyGetterName;
+@property(nonatomic, readonly) NSString *objCPropertySetterName;
 @property(nonatomic, readonly) int objCSelectorIndex;
 @property(nonatomic, readonly) NSString *objCTypeEncoding;
 
 @property(nonatomic, readonly) PLClangAvailability *availability;
+@property(nonatomic, readonly) PLClangIndexDeclaration *indexDeclaration;
 
 @property(nonatomic, readonly) PLClangComment *comment;
 @property(nonatomic, readonly) NSString *briefComment;

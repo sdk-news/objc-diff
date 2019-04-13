@@ -105,6 +105,17 @@ typedef NS_ENUM(NSUInteger, PLClangTypeKind) {
 
     /** __float128 */
     PLClangTypeKindFloat128 = 30,
+    
+    PLClangTypeKindHalf = 31,
+    PLClangTypeKindFloat16 = 32,
+    PLClangTypeKindShortAccum = 33,
+    PLClangTypeKindAccum = 34,
+    PLClangTypeKindLongAccum = 35,
+    PLClangTypeKindUShortAccum = 36,
+    PLClangTypeKindUAccum = 37,
+    PLClangTypeKindULongAccum = 38,
+    PLClangTypeKindFirstBuiltin = PLClangTypeKindVoid,
+    PLClangTypeKindLastBuiltin = PLClangTypeKindULongAccum,
 
     /** A complex type. */
     PLClangTypeKindComplex = 100,
@@ -179,24 +190,87 @@ typedef NS_ENUM(NSUInteger, PLClangTypeKind) {
      *
      * E.g., struct S, or via a qualified name, e.g., N::M::type, or both.
      */
-    PLClangTypeKindElaborated = 119
+    PLClangTypeKindElaborated = 119,
+    
+    /* OpenCL PipeType. */
+    PLClangTypeKindPipe = 120,
+    
+    /* OpenCL builtin types. */
+    PLClangTypeKindOCLImage1dRO = 121,
+    PLClangTypeKindOCLImage1dArrayRO = 122,
+    PLClangTypeKindOCLImage1dBufferRO = 123,
+    PLClangTypeKindOCLImage2dRO = 124,
+    PLClangTypeKindOCLImage2dArrayRO = 125,
+    PLClangTypeKindOCLImage2dDepthRO = 126,
+    PLClangTypeKindOCLImage2dArrayDepthRO = 127,
+    PLClangTypeKindOCLImage2dMSAARO = 128,
+    PLClangTypeKindOCLImage2dArrayMSAARO = 129,
+    PLClangTypeKindOCLImage2dMSAADepthRO = 130,
+    PLClangTypeKindOCLImage2dArrayMSAADepthRO = 131,
+    PLClangTypeKindOCLImage3dRO = 132,
+    PLClangTypeKindOCLImage1dWO = 133,
+    PLClangTypeKindOCLImage1dArrayWO = 134,
+    PLClangTypeKindOCLImage1dBufferWO = 135,
+    PLClangTypeKindOCLImage2dWO = 136,
+    PLClangTypeKindOCLImage2dArrayWO = 137,
+    PLClangTypeKindOCLImage2dDepthWO = 138,
+    PLClangTypeKindOCLImage2dArrayDepthWO = 139,
+    PLClangTypeKindOCLImage2dMSAAWO = 140,
+    PLClangTypeKindOCLImage2dArrayMSAAWO = 141,
+    PLClangTypeKindOCLImage2dMSAADepthWO = 142,
+    PLClangTypeKindOCLImage2dArrayMSAADepthWO = 143,
+    PLClangTypeKindOCLImage3dWO = 144,
+    PLClangTypeKindOCLImage1dRW = 145,
+    PLClangTypeKindOCLImage1dArrayRW = 146,
+    PLClangTypeKindOCLImage1dBufferRW = 147,
+    PLClangTypeKindOCLImage2dRW = 148,
+    PLClangTypeKindOCLImage2dArrayRW = 149,
+    PLClangTypeKindOCLImage2dDepthRW = 150,
+    PLClangTypeKindOCLImage2dArrayDepthRW = 151,
+    PLClangTypeKindOCLImage2dMSAARW = 152,
+    PLClangTypeKindOCLImage2dArrayMSAARW = 153,
+    PLClangTypeKindOCLImage2dMSAADepthRW = 154,
+    PLClangTypeKindOCLImage2dArrayMSAADepthRW = 155,
+    PLClangTypeKindOCLImage3dRW = 156,
+    PLClangTypeKindOCLSampler = 157,
+    PLClangTypeKindOCLEvent = 158,
+    PLClangTypeKindOCLQueue = 159,
+    PLClangTypeKindOCLReserveID = 160,
+    
+    PLClangTypeKindObjCObject = 161,
+    PLClangTypeKindObjCTypeParam = 162,
+    PLClangTypeKindAttributed = 163,
+    
+    PLClangTypeKindOCLIntelSubgroupAVCMcePayload = 164,
+    PLClangTypeKindOCLIntelSubgroupAVCImePayload = 165,
+    PLClangTypeKindOCLIntelSubgroupAVCRefPayload = 166,
+    PLClangTypeKindOCLIntelSubgroupAVCSicPayload = 167,
+    PLClangTypeKindOCLIntelSubgroupAVCMceResult = 168,
+    PLClangTypeKindOCLIntelSubgroupAVCImeResult = 169,
+    PLClangTypeKindOCLIntelSubgroupAVCRefResult = 170,
+    PLClangTypeKindOCLIntelSubgroupAVCSicResult = 171,
+    PLClangTypeKindOCLIntelSubgroupAVCImeResultSingleRefStreamout = 172,
+    PLClangTypeKindOCLIntelSubgroupAVCImeResultDualRefStreamout = 173,
+    PLClangTypeKindOCLIntelSubgroupAVCImeSingleRefStreamin = 174,
+    
+    PLClangTypeKindOCLIntelSubgroupAVCImeDualRefStreamin = 175,
 };
 
 /**
  * The nullability of a PLClangType.
  */
 typedef NS_ENUM(NSUInteger, PLClangNullability) {
-    /** No nullability information is available for the type. */
-    PLClangNullabilityNone = 0,
-
     /** Values of this type can never be null. */
-    PLClangNullabilityNonnull = 1,
+    PLClangNullabilityNonnull = 0,
 
     /** Values of this type can be null. */
-    PLClangNullabilityNullable = 2,
+    PLClangNullabilityNullable = 1,
 
     /** Whether values of this type can be null is explicitly unspecified. */
-    PLClangNullabilityExplicitlyUnspecified = 3
+    PLClangNullabilityExplicitlyUnspecified = 2,
+    
+    /** No nullability information is available for the type. */
+    PLClangNullabilityInvalid = 3
 };
 
 @interface PLClangType : NSObject
@@ -223,7 +297,5 @@ typedef NS_ENUM(NSUInteger, PLClangNullability) {
 @property(nonatomic, readonly) NSArray *argumentTypes;
 
 @property(nonatomic, readonly) PLClangNullability nullability;
-
-- (instancetype) typeByRemovingOuterNullability;
 
 @end

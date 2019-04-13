@@ -3,7 +3,7 @@ ObjectDoc
       Objective-C wrapper for libclang.
 
     Version:
-      c7b39e58aae4a2857df080b0a1cc7eb57492e7d6 built from https://github.com/landonf/objectdoc.git
+      be02d1cb0f106d108a95eff68bf5e050c4ea0a28 built from https://github.com/dreampiggy/objc-diff.git
 
     License:
       MIT
@@ -13,7 +13,7 @@ GRMustache (via ObjectDoc)
       Mustache templating engine.
 
     Version:
-      6.8.2 downloaded from https://github.com/groue/GRMustache/releases/tag/v6.8.2
+      7.3.2 downloaded from https://github.com/groue/GRMustache/releases/tag/v7.3.2
 
     License:
       MIT
@@ -23,7 +23,7 @@ LLVM (via ObjectDoc)
       LLVM and Clang sources.
 
     Version:
-      5.0 downloaded from http://llvm.org/releases/download.html
+      8.0.0 downloaded from http://llvm.org/releases/download.html
 
     License:
       University of Illinois/NCSA Open Source License

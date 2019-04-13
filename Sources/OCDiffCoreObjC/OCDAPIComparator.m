@@ -421,20 +421,10 @@
             deprecationMessage = newPlatformAvailability.message;
         }
 
-        NSString *replacement = newCursor.availability.unconditionalDeprecationReplacement;
-        if ([replacement length] == 0 && newPlatformAvailability != nil) {
-            replacement = newPlatformAvailability.replacement;
-        }
-
         if (newAvailabilityKind == PLClangAvailabilityKindDeprecated && [deprecationMessage length] > 0) {
             modification = [OCDModification modificationWithType:OCDModificationTypeDeprecationMessage
                                                    previousValue:nil
                                                     currentValue:deprecationMessage];
-            [modifications addObject:modification];
-        } else if (newAvailabilityKind == PLClangAvailabilityKindDeprecated && [replacement length] > 0) {
-            modification = [OCDModification modificationWithType:OCDModificationTypeReplacement
-                                                   previousValue:nil
-                                                    currentValue:replacement];
             [modifications addObject:modification];
         }
     }
@@ -544,11 +534,11 @@
                 return YES;
             }
 
-            if (oldCursor.objCPropertyAttributes & PLClangObjCPropertyAttributeGetter && [oldCursor.objCPropertyGetter.USR isEqual:newCursor.objCPropertyGetter.USR] == NO) {
+            if (oldCursor.objCPropertyAttributes & PLClangObjCPropertyAttributeGetter && [oldCursor.objCPropertyGetterName isEqualToString:newCursor.objCPropertyGetterName] == NO) {
                 return YES;
             }
 
-            if (oldCursor.objCPropertyAttributes & PLClangObjCPropertyAttributeSetter && [oldCursor.objCPropertySetter.USR isEqual:newCursor.objCPropertySetter.USR] == NO) {
+            if (oldCursor.objCPropertyAttributes & PLClangObjCPropertyAttributeSetter && [oldCursor.objCPropertySetterName isEqualToString:newCursor.objCPropertySetterName] == NO) {
                 return YES;
             }
 
@@ -639,13 +629,13 @@
         {
             [decl appendString:@"@property "];
 
-            if (cursor.objCPropertyAttributes != PLClangObjCPropertyAttributeNone || cursor.type.nullability != PLClangNullabilityNone) {
+            if (cursor.objCPropertyAttributes != PLClangObjCPropertyAttributeNone || cursor.type.nullability != PLClangNullabilityInvalid) {
                 [decl appendString:@"("];
                 [decl appendString:[self propertyAttributeStringForCursor:cursor]];
                 [decl appendString:@") "];
             }
 
-            PLClangType *propertyType = [cursor.type typeByRemovingOuterNullability];
+            PLClangType *propertyType = cursor.type;
             [decl appendString:propertyType.spelling];
 
             if (![propertyType.spelling hasSuffix:@"*"]) {
@@ -842,7 +832,7 @@
     // via the "clang assume_nonnull begin" pragma.
 
     switch (cursor.type.nullability) {
-        case PLClangNullabilityNone:
+        case PLClangNullabilityInvalid:
             break;
 
         case PLClangNullabilityNonnull:
@@ -854,20 +844,16 @@
             break;
 
         case PLClangNullabilityExplicitlyUnspecified:
-            if (attributes & PLClangObjCPropertyAttributeNullResettable) {
-                [attributeStrings addObject:@"null_resettable"];
-            } else {
-                [attributeStrings addObject:@"null_unspecified"];
-            }
+            [attributeStrings addObject:@"null_unspecified"];
             break;
     }
 
     if (attributes & PLClangObjCPropertyAttributeGetter) {
-        [attributeStrings addObject:[NSString stringWithFormat:@"getter=%@", cursor.objCPropertyGetter.spelling]];
+        [attributeStrings addObject:[NSString stringWithFormat:@"getter=%@", cursor.objCPropertyGetterName]];
     }
 
     if (attributes & PLClangObjCPropertyAttributeSetter) {
-        [attributeStrings addObject:[NSString stringWithFormat:@"setter=%@", cursor.objCPropertySetter.spelling]];
+        [attributeStrings addObject:[NSString stringWithFormat:@"setter=%@", cursor.objCPropertySetterName]];
     }
 
     return [attributeStrings componentsJoinedByString:@", "];
@@ -881,7 +867,7 @@
  */
 - (NSString *)objCSpellingForNullability:(PLClangNullability)nullability {
     switch (nullability) {
-        case PLClangNullabilityNone:
+        case PLClangNullabilityInvalid:
             return @"";
 
         case PLClangNullabilityNonnull:
@@ -902,8 +888,7 @@
  */
 - (NSString *)spellingForTypeInObjectiveCMethod:(PLClangType *)type {
     PLClangNullability nullability = type.nullability;
-    if (nullability != PLClangNullabilityNone) {
-        type = [type typeByRemovingOuterNullability];
+    if (nullability != PLClangNullabilityInvalid) {
         return [NSString stringWithFormat:@"%@ %@",
                 [self objCSpellingForNullability:nullability],
                 type.spelling];
