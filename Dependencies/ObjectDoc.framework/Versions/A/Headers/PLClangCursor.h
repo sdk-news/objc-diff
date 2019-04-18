@@ -1559,7 +1559,6 @@ typedef PLClangCursorVisitResult (^PLClangCursorVisitorBlock)(PLClangCursor *cur
 @property(nonatomic, readonly) NSString *objCTypeEncoding;
 
 @property(nonatomic, readonly) PLClangAvailability *availability;
-@property(nonatomic, readonly) PLClangIndexDeclaration *indexDeclaration;
 
 @property(nonatomic, readonly) PLClangComment *comment;
 @property(nonatomic, readonly) NSString *briefComment;
