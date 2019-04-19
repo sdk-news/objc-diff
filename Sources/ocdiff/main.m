@@ -98,7 +98,7 @@ static PLClangTranslationUnit *TranslationUnitForSource(PLClangSourceIndex *inde
     NSString *combinedHeaderPath = [baseDirectory stringByAppendingPathComponent:@"_OCDAPI.h"];
     PLClangUnsavedFile *unsavedFile = [PLClangUnsavedFile unsavedFileWithPath:combinedHeaderPath
                                                                          data:[source dataUsingEncoding:NSUTF8StringEncoding]];
-    PLClangTranslationUnitCreationOptions options = PLClangTranslationUnitCreationDetailedPreprocessingRecord | PLClangTranslationUnitCreationSkipFunctionBodies;
+    PLClangTranslationUnitCreationOptions options = PLClangTranslationUnitCreationDetailedPreprocessingRecord | PLClangTranslationUnitCreationSkipFunctionBodies | PLClangTranslationUnitCreationIncludeAttributedTypes;
     if (!printErrors) {
         options |= PLClangTranslationUnitCreationKeepGoing;
     }

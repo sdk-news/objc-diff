@@ -644,8 +644,8 @@
                 [decl appendString:[self propertyAttributeStringForCursor:cursor]];
                 [decl appendString:@") "];
             }
-
-            PLClangType *propertyType = cursor.type;
+            
+            PLClangType *propertyType = [cursor.type typeByRemovingOuterNullability];
             [decl appendString:propertyType.spelling];
 
             if (![propertyType.spelling hasSuffix:@"*"]) {
@@ -899,6 +899,7 @@
 - (NSString *)spellingForTypeInObjectiveCMethod:(PLClangType *)type {
     PLClangNullability nullability = type.nullability;
     if (nullability != PLClangNullabilityInvalid) {
+        type = [type typeByRemovingOuterNullability];
         return [NSString stringWithFormat:@"%@ %@",
                 [self objCSpellingForNullability:nullability],
                 type.spelling];
