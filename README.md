@@ -25,6 +25,13 @@ Beta. The tool has been tested against the system frameworks and a number of thi
       --args <args>      Compiler arguments for both API versions
       --oldargs <args>   Compiler arguments for the old API version
       --newargs <args>   Compiler arguments for the new API version
+      --skip-error       Skip any parser error from clang and try to generate report
       --version          Show the version and exit
 
 See the [man page](OCDiff/objc-diff.pod) for expanded usage information.
+
+## Author
+
+- landonf (Original Author)
+- DreamPiggy
+

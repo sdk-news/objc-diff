@@ -44,6 +44,7 @@ static void PrintUsage(void) {
     "  --args <args>      Compiler arguments for both API versions\n"
     "  --oldargs <args>   Compiler arguments for the old API version\n"
     "  --newargs <args>   Compiler arguments for the new API version\n"
+    "  --skip-error       Skip any parser error from clang and try to generate report\n"
     "  --version          Show the version and exit\n",
     [name UTF8String]);
 }
@@ -97,13 +98,15 @@ static PLClangTranslationUnit *TranslationUnitForSource(PLClangSourceIndex *inde
     NSString *combinedHeaderPath = [baseDirectory stringByAppendingPathComponent:@"_OCDAPI.h"];
     PLClangUnsavedFile *unsavedFile = [PLClangUnsavedFile unsavedFileWithPath:combinedHeaderPath
                                                                          data:[source dataUsingEncoding:NSUTF8StringEncoding]];
-
+    PLClangTranslationUnitCreationOptions options = PLClangTranslationUnitCreationDetailedPreprocessingRecord | PLClangTranslationUnitCreationSkipFunctionBodies;
+    if (!printErrors) {
+        options |= PLClangTranslationUnitCreationKeepGoing;
+    }
     NSError *error;
     PLClangTranslationUnit *translationUnit = [index addTranslationUnitWithSourcePath:combinedHeaderPath
                                                                          unsavedFiles:@[unsavedFile]
                                                                     compilerArguments:compilerArguments
-                                                                              options:PLClangTranslationUnitCreationDetailedPreprocessingRecord |
-                                                                                      PLClangTranslationUnitCreationSkipFunctionBodies
+                                                                              options:options
                                                                                 error:&error];
 
     if (translationUnit == nil) {
@@ -118,8 +121,8 @@ static PLClangTranslationUnit *TranslationUnitForSource(PLClangSourceIndex *inde
                     fprintf(stderr, "%s\n", [diagnostic.formattedErrorMessage UTF8String]);
                 }
             }
+            return nil;
         }
-        return nil;
     }
 
     return translationUnit;
@@ -180,7 +183,7 @@ static PLClangTranslationUnit *TranslationUnitForPath(PLClangSourceIndex *index,
     }
 }
 
-static PLClangTranslationUnit *TranslationUnitForSDKFramework(PLClangSourceIndex *index, NSString *path, NSArray *compilerArguments) {
+static PLClangTranslationUnit *TranslationUnitForSDKFramework(PLClangSourceIndex *index, NSString *path, NSArray *compilerArguments, BOOL printErrors) {
     NSFileManager *fileManager = [NSFileManager defaultManager];
     NSString *frameworkName = [[path lastPathComponent] stringByDeletingPathExtension];
 
@@ -223,7 +226,7 @@ static PLClangTranslationUnit *TranslationUnitForSDKFramework(PLClangSourceIndex
         // If parsing all headers fails, retry through the umbrella header.
         // TODO: Look into using module definition to avoid this issue.
         NSString *umbrellaSource = [NSString stringWithFormat:@"#import <%@/%@.h>\n", frameworkName, frameworkName];
-        translationUnit = TranslationUnitForSource(index, path, umbrellaSource, compilerArguments, YES);
+        translationUnit = TranslationUnitForSource(index, path, umbrellaSource, compilerArguments, printErrors);
     }
 
     return translationUnit;
@@ -262,7 +265,7 @@ static NSURL *SwiftInterfaceForSDKFramework(NSString *path) {
     return [NSURL fileURLWithPath:[interfaces anyObject]];
 }
 
-static OCDAPIDifferences *DiffSDKs(NSString *oldSDKPath, NSArray *oldCompilerArguments, NSString *newSDKPath, NSArray *newCompilerArguments) {
+static OCDAPIDifferences *DiffSDKs(NSString *oldSDKPath, NSArray *oldCompilerArguments, NSString *newSDKPath, NSArray *newCompilerArguments, BOOL printErrors) {
     NSMutableArray *modules = [NSMutableArray array];
     NSDictionary<NSString *, NSString *> *oldFrameworks = FrameworksForSDKAtPath(oldSDKPath);
     NSDictionary<NSString *, NSString *> *newFrameworks = FrameworksForSDKAtPath(newSDKPath);
@@ -302,8 +305,8 @@ static OCDAPIDifferences *DiffSDKs(NSString *oldSDKPath, NSArray *oldCompilerArg
             if (oldPath != nil) {
                 NSMutableArray<OCDifference *> *differences = [[NSMutableArray alloc] init];
 
-                PLClangTranslationUnit *newTU = TranslationUnitForSDKFramework(index, newPath, newCompilerArguments);
-                PLClangTranslationUnit *oldTU = TranslationUnitForSDKFramework(index, oldPath, oldCompilerArguments);
+                PLClangTranslationUnit *newTU = TranslationUnitForSDKFramework(index, newPath, newCompilerArguments, printErrors);
+                PLClangTranslationUnit *oldTU = TranslationUnitForSDKFramework(index, oldPath, oldCompilerArguments, printErrors);
                 if (oldTU != nil && newTU != nil) {
                     OCDAPISource *oldSource = [OCDAPISource APISourceWithTranslationUnit:oldTU containingPath:oldPath includeSystemHeaders:YES];
                     OCDAPISource *newSource = [OCDAPISource APISourceWithTranslationUnit:newTU containingPath:newPath includeSystemHeaders:YES];
@@ -324,7 +327,7 @@ static OCDAPIDifferences *DiffSDKs(NSString *oldSDKPath, NSArray *oldCompilerArg
             } else {
                 NSMutableArray<OCDifference *> *differences = [[NSMutableArray alloc] init];
 
-                PLClangTranslationUnit *newTU = TranslationUnitForSDKFramework(index, newPath, newCompilerArguments);
+                PLClangTranslationUnit *newTU = TranslationUnitForSDKFramework(index, newPath, newCompilerArguments, printErrors);
                 if (newTU != nil) {
                     OCDAPISource *newSource = [OCDAPISource APISourceWithTranslationUnit:newTU containingPath:newPath includeSystemHeaders:YES];
                     [differences addObjectsFromArray:[OCDAPIComparator differencesBetweenOldAPISource:nil newAPISource:newSource]];
@@ -425,6 +428,7 @@ int main(int argc, char *argv[]) {
                                                 nil];
         NSMutableArray *newCompilerArguments = [oldCompilerArguments mutableCopy];
         int reportTypes = 0;
+        BOOL printErrors = YES;
         int optchar;
 
         static struct option longopts[] = {
@@ -440,6 +444,7 @@ int main(int argc, char *argv[]) {
             { "args",         no_argument,        NULL,          'A' },
             { "oldargs",      no_argument,        NULL,          'O' },
             { "newargs",      no_argument,        NULL,          'N' },
+            { "skip-error",   no_argument,        NULL,          'P' },
             { "version",      no_argument,        NULL,          'v' },
             { NULL,           0,                  NULL,           0  }
         };
@@ -506,6 +511,11 @@ int main(int argc, char *argv[]) {
                     NSArray *arguments = GetCompilerArguments(argc - optind, argv + optind);
                     [newCompilerArguments addObjectsFromArray:arguments];
                     optind += [arguments count];
+                    break;
+                }
+                case 'P':
+                {
+                    printErrors = NO;
                     break;
                 }
                 case 0:
@@ -575,7 +585,7 @@ int main(int argc, char *argv[]) {
         OCDAPIDifferences *differences;
 
         if (oldPathIsSDK) {
-            differences = DiffSDKs(oldPath, oldCompilerArguments, newPath, newCompilerArguments);
+            differences = DiffSDKs(oldPath, oldCompilerArguments, newPath, newCompilerArguments, printErrors);
         } else {
             PLClangSourceIndex *index = [PLClangSourceIndex indexWithOptions:0];
 
@@ -583,11 +593,11 @@ int main(int argc, char *argv[]) {
             NSURL *oldSwiftInterface = nil;
             if (oldPath != nil) {
                 if (oldSDK != nil) {
-                    PLClangTranslationUnit *oldTU = TranslationUnitForSDKFramework(index, oldPath, oldCompilerArguments);
+                    PLClangTranslationUnit *oldTU = TranslationUnitForSDKFramework(index, oldPath, oldCompilerArguments, printErrors);
                     oldSource = [OCDAPISource APISourceWithTranslationUnit:oldTU containingPath:oldPath includeSystemHeaders:YES];
                     oldSwiftInterface = SwiftInterfaceForSDKFramework(oldPath);
                 } else {
-                    PLClangTranslationUnit *oldTU = TranslationUnitForPath(index, oldPath, oldCompilerArguments, YES);
+                    PLClangTranslationUnit *oldTU = TranslationUnitForPath(index, oldPath, oldCompilerArguments, printErrors);
                     oldSource = [OCDAPISource APISourceWithTranslationUnit:oldTU];
                 }
             }
@@ -595,11 +605,11 @@ int main(int argc, char *argv[]) {
             OCDAPISource *newSource = nil;
             NSURL *newSwiftInterface = nil;
             if (newSDK != nil) {
-                PLClangTranslationUnit *newTU = TranslationUnitForSDKFramework(index, newPath, newCompilerArguments);
+                PLClangTranslationUnit *newTU = TranslationUnitForSDKFramework(index, newPath, newCompilerArguments, printErrors);
                 newSource = [OCDAPISource APISourceWithTranslationUnit:newTU containingPath:newPath includeSystemHeaders:YES];
                 newSwiftInterface = SwiftInterfaceForSDKFramework(newPath);
             } else {
-                PLClangTranslationUnit *newTU = TranslationUnitForPath(index, newPath, newCompilerArguments, YES);
+                PLClangTranslationUnit *newTU = TranslationUnitForPath(index, newPath, newCompilerArguments, printErrors);
                 newSource = [OCDAPISource APISourceWithTranslationUnit:newTU];
             }
 
