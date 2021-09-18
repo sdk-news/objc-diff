@@ -1,6 +1,7 @@
 #import <XCTest/XCTest.h>
 #import <ObjectDoc/ObjectDoc.h>
-#import "OCDAPIComparator.h"
+@import OCDiffCore;
+@import OCDiffCoreObjC;
 
 static NSString * const OCDOldTestPath = @"old/test.h";
 static NSString * const OCDNewTestPath = @"new/test.h";

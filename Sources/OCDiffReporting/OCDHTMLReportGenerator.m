@@ -236,9 +236,10 @@
 }
 
 - (NSData *)embeddedResouceDataWithName:(NSString *)name {
-    unsigned long size = 0;
-    uint8_t *data = getsectiondata(&_mh_execute_header, "__TEXT", [name UTF8String], &size);
-    return data ? [NSData dataWithBytesNoCopy:data length:size freeWhenDone:NO] : nil;
+    return [NSData dataWithContentsOfURL:[SWIFTPM_MODULE_BUNDLE URLForResource:name withExtension:nil]];
+//    unsigned long size = 0;
+//    uint8_t *data = getsectiondata(&_mh_execute_header, "__TEXT", [name UTF8String], &size);
+//    return data ? [NSData dataWithBytesNoCopy:data length:size freeWhenDone:NO] : nil;
 }
 
 - (NSString *)stringByHTMLEscapingString:(NSString *)string {

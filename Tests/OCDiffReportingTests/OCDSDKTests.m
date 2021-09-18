@@ -1,5 +1,5 @@
 #import <XCTest/XCTest.h>
-#import "OCDSDK.h"
+@import OCDiffReporting;
 
 @interface OCDSDKTests : XCTestCase
 @end
@@ -10,7 +10,10 @@
 
 - (void)setUp {
     [super setUp];
-    _sdksDir = [[NSBundle bundleForClass:[self class]] pathForResource:@"SDKs" ofType:@""];
+
+#warning Cannot use resources in tests, https://forums.swift.org/t/swift-5-3-spm-resources-in-tests-uses-wrong-bundle-path/37051/29
+//    _sdksDir = [SWIFTPM_MODULE_BUNDLE pathForResource:@"SDKs" ofType:@""];
+    _sdksDir = [[@(__FILE__) stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"SDKs"];
     XCTAssertNotNil(_sdksDir, @"Could not locate test SDKs directory in test bundle.");
 }
 
