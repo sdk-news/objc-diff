@@ -52,6 +52,7 @@ h1 {
 
 .declaration {
     font-family: Courier, Consolas, monospace;
+    white-space: pre-wrap;
 }
 
 table {

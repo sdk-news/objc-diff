@@ -12,6 +12,8 @@
 #import "OCDTitleGenerator.h"
 #import "OCDXMLReportGenerator.h"
 
+@import OCDiffCoreSwift;
+
 enum OCDReportTypes {
     OCDReportTypeText = 1 << 0,
     OCDReportTypeXML  = 1 << 1,
@@ -227,6 +229,39 @@ static PLClangTranslationUnit *TranslationUnitForSDKFramework(PLClangSourceIndex
     return translationUnit;
 }
 
+static NSURL *SwiftInterfaceForSDKFramework(NSString *path) {
+    // /Applications/Xcode-12.5.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk/System/Library/Frameworks/SwiftUI.framework
+    // /Modules/SwiftUI.swiftmodule/arm64.swiftinterface
+
+    NSFileManager *fileManager = [NSFileManager defaultManager];
+    NSString *frameworkName = [[path lastPathComponent] stringByDeletingPathExtension];
+
+    path = [path ocd_absolutePath];
+
+    if (![path ocd_isFrameworkPath]) {
+        return nil;
+    }
+
+    path = [path stringByAppendingPathComponent:@"Modules"];
+    path = [path stringByAppendingPathComponent:[frameworkName stringByAppendingPathExtension:@"swiftmodule"]];
+
+    if ([fileManager fileExistsAtPath:path] == NO) {
+        return nil;
+    }
+
+    NSDirectoryEnumerator *enumerator  = [fileManager enumeratorAtPath:path];
+
+    NSMutableSet *interfaces = [[NSMutableSet alloc] init];
+
+    for (NSString *file in enumerator) {
+        if ([[file pathExtension] isEqual:@"swiftinterface"]) {
+            [interfaces addObject:[path stringByAppendingPathComponent:file]];
+        }
+    }
+
+    return [NSURL fileURLWithPath:[interfaces anyObject]];
+}
+
 static OCDAPIDifferences *DiffSDKs(NSString *oldSDKPath, NSArray *oldCompilerArguments, NSString *newSDKPath, NSArray *newCompilerArguments) {
     NSMutableArray *modules = [NSMutableArray array];
     NSDictionary<NSString *, NSString *> *oldFrameworks = FrameworksForSDKAtPath(oldSDKPath);
@@ -265,35 +300,46 @@ static OCDAPIDifferences *DiffSDKs(NSString *oldSDKPath, NSArray *oldCompilerArg
             NSString *newPath = newFrameworks[frameworkName];
 
             if (oldPath != nil) {
+                NSMutableArray<OCDifference *> *differences = [[NSMutableArray alloc] init];
+
+                PLClangTranslationUnit *newTU = TranslationUnitForSDKFramework(index, newPath, newCompilerArguments);
                 PLClangTranslationUnit *oldTU = TranslationUnitForSDKFramework(index, oldPath, oldCompilerArguments);
-                if (oldTU == nil) {
-                    continue;
+                if (oldTU != nil && newTU != nil) {
+                    OCDAPISource *oldSource = [OCDAPISource APISourceWithTranslationUnit:oldTU containingPath:oldPath includeSystemHeaders:YES];
+                    OCDAPISource *newSource = [OCDAPISource APISourceWithTranslationUnit:newTU containingPath:newPath includeSystemHeaders:YES];
+                    [differences addObjectsFromArray:[OCDAPIComparator differencesBetweenOldAPISource:oldSource newAPISource:newSource]];
                 }
 
-                PLClangTranslationUnit *newTU = TranslationUnitForSDKFramework(index, newPath, newCompilerArguments);
-                if (newTU == nil) {
-                    continue;
+                NSURL *newSI = SwiftInterfaceForSDKFramework(newPath);
+                NSURL *oldSI = SwiftInterfaceForSDKFramework(oldPath);
+                if (oldSI != nil && newSI != nil) {
+                    [differences addObjectsFromArray:[OCDSwiftInterfaceComparator compareModule:[frameworkName stringByDeletingPathExtension] oldInterfaceURL:oldSI newInterfaceURL:newSI]];
                 }
 
-                OCDAPISource *oldSource = [OCDAPISource APISourceWithTranslationUnit:oldTU containingPath:oldPath includeSystemHeaders:YES];
-                OCDAPISource *newSource = [OCDAPISource APISourceWithTranslationUnit:newTU containingPath:newPath includeSystemHeaders:YES];
-                NSArray<OCDifference *> *differences = [OCDAPIComparator differencesBetweenOldAPISource:oldSource newAPISource:newSource];
-
-                [modules addObject:[OCDModule moduleWithName:[frameworkName stringByDeletingPathExtension]
-                                              differenceType:OCDifferenceTypeModification
-                                                 differences:differences]];
+                if ([differences count]) {
+                    [modules addObject:[OCDModule moduleWithName:[frameworkName stringByDeletingPathExtension]
+                                                  differenceType:OCDifferenceTypeModification
+                                                     differences:[differences copy]]];
+                }
             } else {
+                NSMutableArray<OCDifference *> *differences = [[NSMutableArray alloc] init];
+
                 PLClangTranslationUnit *newTU = TranslationUnitForSDKFramework(index, newPath, newCompilerArguments);
-                if (newTU == nil) {
-                    continue;
+                if (newTU != nil) {
+                    OCDAPISource *newSource = [OCDAPISource APISourceWithTranslationUnit:newTU containingPath:newPath includeSystemHeaders:YES];
+                    [differences addObjectsFromArray:[OCDAPIComparator differencesBetweenOldAPISource:nil newAPISource:newSource]];
                 }
 
-                OCDAPISource *newSource = [OCDAPISource APISourceWithTranslationUnit:newTU containingPath:newPath includeSystemHeaders:YES];
-                NSArray<OCDifference *> *differences = [OCDAPIComparator differencesBetweenOldAPISource:nil newAPISource:newSource];
+                NSURL *newSI = SwiftInterfaceForSDKFramework(newPath);
+                if (newSI != nil) {
+                    [differences addObjectsFromArray:[OCDSwiftInterfaceComparator compareModule:[frameworkName stringByDeletingPathExtension] oldInterfaceURL:nil newInterfaceURL:newSI]];
+                }
 
-                [modules addObject:[OCDModule moduleWithName:[frameworkName stringByDeletingPathExtension]
-                                              differenceType:OCDifferenceTypeAddition
-                                                 differences:differences]];
+                if ([differences count]) {
+                    [modules addObject:[OCDModule moduleWithName:[frameworkName stringByDeletingPathExtension]
+                                                  differenceType:OCDifferenceTypeAddition
+                                                     differences:[differences copy]]];
+                }
             }
         }
     }
@@ -331,6 +377,22 @@ static void ApplySDKToCompilerArguments(OCDSDK *sdk, NSMutableArray *compilerArg
         [compilerArguments addObject:@"-arch"];
         [compilerArguments addObject:sdk.defaultArchitecture];
     }
+
+    switch (sdk.platform) {
+        case OCDPlatformIOS:
+            [compilerArguments addObject:@"--target=unknown-apple-ios-simulator"];
+            break;
+        case OCDPlatformMacOS:
+            // TODO: fill in proper triple for macos
+            //[compilerArguments addObject:@"--target=unknown-apple-macosx"];
+            break;
+        case OCDPlatformTVOS:
+            [compilerArguments addObject:@"--target=unknown-apple-tvos-unknown"];
+            break;
+        case OCDPlatformWatchOS:
+            [compilerArguments addObject:@"--target=unknown-apple-watchos-unknown"];
+            break;
+    }
 }
 
 static NSArray *GetCompilerArguments(int argc, char *argv[]) {
@@ -356,7 +418,11 @@ int main(int argc, char *argv[]) {
         NSString *title;
         NSString *linkMapPath;
         NSString *htmlOutputDirectory;
-        NSMutableArray *oldCompilerArguments = [NSMutableArray arrayWithObjects:@"-x", @"objective-c-header", nil];
+        NSMutableArray *oldCompilerArguments = [NSMutableArray arrayWithObjects:
+                                                @"-x", @"objective-c-header",
+                                                @"-DNS_FORMAT_ARGUMENT(A)=",
+                                                @"-D_Nullable_result=_Nullable",
+                                                nil];
         NSMutableArray *newCompilerArguments = [oldCompilerArguments mutableCopy];
         int reportTypes = 0;
         int optchar;
@@ -513,38 +579,42 @@ int main(int argc, char *argv[]) {
         } else {
             PLClangSourceIndex *index = [PLClangSourceIndex indexWithOptions:0];
 
-            OCDAPISource *oldSource;
+            OCDAPISource *oldSource = nil;
+            NSURL *oldSwiftInterface = nil;
             if (oldPath != nil) {
-
                 if (oldSDK != nil) {
                     PLClangTranslationUnit *oldTU = TranslationUnitForSDKFramework(index, oldPath, oldCompilerArguments);
                     oldSource = [OCDAPISource APISourceWithTranslationUnit:oldTU containingPath:oldPath includeSystemHeaders:YES];
+                    oldSwiftInterface = SwiftInterfaceForSDKFramework(oldPath);
                 } else {
                     PLClangTranslationUnit *oldTU = TranslationUnitForPath(index, oldPath, oldCompilerArguments, YES);
                     oldSource = [OCDAPISource APISourceWithTranslationUnit:oldTU];
                 }
-
-                if (oldSource == nil) {
-                    return 1;
-                }
             }
 
-            OCDAPISource *newSource;
-
+            OCDAPISource *newSource = nil;
+            NSURL *newSwiftInterface = nil;
             if (newSDK != nil) {
                 PLClangTranslationUnit *newTU = TranslationUnitForSDKFramework(index, newPath, newCompilerArguments);
                 newSource = [OCDAPISource APISourceWithTranslationUnit:newTU containingPath:newPath includeSystemHeaders:YES];
+                newSwiftInterface = SwiftInterfaceForSDKFramework(newPath);
             } else {
                 PLClangTranslationUnit *newTU = TranslationUnitForPath(index, newPath, newCompilerArguments, YES);
                 newSource = [OCDAPISource APISourceWithTranslationUnit:newTU];
             }
 
-            if (newSource == nil) {
+            if (oldSource == nil && oldSwiftInterface == nil && newSource == nil && newSwiftInterface == nil) {
                 return 1;
             }
 
             NSString *moduleName = [[newPath lastPathComponent] stringByDeletingPathExtension];
-            NSArray<OCDifference *> *moduleDifferences = [OCDAPIComparator differencesBetweenOldAPISource:oldSource newAPISource:newSource];
+            NSMutableArray<OCDifference *> *moduleDifferences = [[NSMutableArray alloc] init];
+            if (oldSource != nil || newSource != nil) {
+                [moduleDifferences addObjectsFromArray:[OCDAPIComparator differencesBetweenOldAPISource:oldSource newAPISource:newSource]];
+            }
+            if (oldSwiftInterface != nil || newSwiftInterface != nil) {
+                [moduleDifferences addObjectsFromArray:[OCDSwiftInterfaceComparator compareModule:moduleName oldInterfaceURL:oldSwiftInterface newInterfaceURL:newSwiftInterface]];
+            }
             OCDModule *module = [OCDModule moduleWithName:moduleName differenceType:OCDifferenceTypeModification differences:moduleDifferences];
             differences = [OCDAPIDifferences APIDifferencesWithModules:@[module]];
         }

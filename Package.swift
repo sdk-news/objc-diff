@@ -1,4 +1,4 @@
-// swift-tools-version:5.3
+// swift-tools-version:5.6
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import Foundation
@@ -13,19 +13,24 @@ let package = Package(
         .executable(name: "ocdiff", targets: ["ocdiff"]),
     ],
     dependencies: [
-        .package(name: "SwiftSyntax", url: "https://github.com/apple/swift-syntax.git", .branch("release/5.4")),
+        .package(url: "https://github.com/apple/swift-syntax.git", exact: "0.50600.1"),
     ],
     targets: [
-        .target(
+        .executableTarget(
             name: "ocdiff",
-            dependencies: ["OCDiffCore", "OCDiffCoreObjC", "OCDiffReporting"],
+            dependencies: [
+                "OCDiffCore",
+                "OCDiffCoreObjC",
+                "OCDiffCoreSwift",
+                "OCDiffReporting"
+            ],
             cSettings: [
                 .frameworkSearchPath("Dependencies"),
             ],
             linkerSettings: [
                 .linkedFramework("ObjectDoc"),
                 .frameworkSearchPath("Dependencies"),
-                .runpathSearchPath(URL.packageRoot.appendingPathComponent("Dependencies"), .when(configuration: .debug)),
+                .runpathSearchPath(URL.packageRoot.appendingPathComponent("Dependencies")),
             ]
         ),
 
@@ -37,7 +42,9 @@ let package = Package(
 
         .target(
             name: "OCDiffCoreObjC",
-            dependencies: ["OCDiffCore"],
+            dependencies: [
+                "OCDiffCore"
+            ],
             publicHeadersPath: "",
             cSettings: [
                 .frameworkSearchPath("Dependencies"),
@@ -49,19 +56,47 @@ let package = Package(
         ),
         .testTarget(
             name: "OCDiffCoreObjCTests",
-            dependencies: ["OCDiffCoreObjC"],
+            dependencies: [
+                "OCDiffCoreObjC"
+            ],
             cSettings: [
                 .frameworkSearchPath("Dependencies"),
             ],
             linkerSettings: [
                 .frameworkSearchPath("Dependencies"),
-                .runpathSearchPath(URL.packageRoot.appendingPathComponent("Dependencies"), .when(configuration: .debug)),
+                .runpathSearchPath(URL.packageRoot.appendingPathComponent("Dependencies")),
+            ]
+        ),
+
+        .target(
+            name: "OCDiffCoreSwift",
+            dependencies: [
+                "OCDiffCore",
+                "SwiftSyntaxAnalysis",
+                .product(name: "SwiftSyntax", package: "swift-syntax"),
+                .product(name: "SwiftSyntaxParser", package: "swift-syntax"),
+            ],
+            swiftSettings: [
+                .frameworkSearchPath("Dependencies"),
+            ]
+        ),
+        .testTarget(
+            name: "OCDiffCoreSwiftTests",
+            dependencies: [
+                "OCDiffCoreSwift",
+                .product(name: "SwiftSyntax", package: "swift-syntax"),
+                .product(name: "SwiftSyntaxParser", package: "swift-syntax"),
+            ],
+            linkerSettings: [
+                .runpathSearchPath(URL.packageRoot.appendingPathComponent("Dependencies")),
             ]
         ),
 
         .target(
             name: "OCDiffReporting",
-            dependencies: ["OCDiffCore"],
+            dependencies: [
+                "OCDiffCore"
+            ],
             resources: [
               .copy("apidiff.css"),
             ],
@@ -75,7 +110,9 @@ let package = Package(
         ),
         .testTarget(
             name: "OCDiffReportingTests",
-            dependencies: ["OCDiffReporting"],
+            dependencies: [
+                "OCDiffReporting"
+            ],
             resources: [
               .copy("SDKs"),
             ],
@@ -84,6 +121,24 @@ let package = Package(
             ],
             linkerSettings: [
                 .frameworkSearchPath("Dependencies"),
+                .runpathSearchPath(URL.packageRoot.appendingPathComponent("Dependencies"), .when(configuration: .debug)),
+            ]
+        ),
+
+        .target(
+            name: "SwiftSyntaxAnalysis",
+            dependencies: [
+                .product(name: "SwiftSyntax", package: "swift-syntax"),
+            ]
+        ),
+        .testTarget(
+            name: "SwiftSyntaxAnalysisTests",
+            dependencies: [
+                "SwiftSyntaxAnalysis",
+                .product(name: "SwiftSyntax", package: "swift-syntax"),
+                .product(name: "SwiftSyntaxParser", package: "swift-syntax"),
+            ],
+            linkerSettings: [
                 .runpathSearchPath(URL.packageRoot.appendingPathComponent("Dependencies"), .when(configuration: .debug)),
             ]
         ),
