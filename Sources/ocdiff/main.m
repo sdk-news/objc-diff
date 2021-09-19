@@ -8,14 +8,16 @@
 #import "OCDAPIDifferences.h"
 #import "OCDSDK.h"
 #import "OCDHTMLReportGenerator.h"
+#import "OCDMarkdownReportGenerator.h"
 #import "OCDTextReportGenerator.h"
 #import "OCDTitleGenerator.h"
 #import "OCDXMLReportGenerator.h"
 
 enum OCDReportTypes {
-    OCDReportTypeText = 1 << 0,
-    OCDReportTypeXML  = 1 << 1,
-    OCDReportTypeHTML = 1 << 2
+    OCDReportTypeText     = 1 << 0,
+    OCDReportTypeXML      = 1 << 1,
+    OCDReportTypeHTML     = 1 << 2,
+    OCDReportTypeMarkdown = 1 << 3
 };
 
 static void PrintUsage(void) {
@@ -31,18 +33,20 @@ static void PrintUsage(void) {
     "header, or a path to a directory of headers.\n"
     "\n"
     "Options:\n"
-    "  --help             Show this help message and exit\n"
-    "  --title            Title of the generated report\n"
-    "  --text             Write a text report to standard output (the default)\n"
-    "  --xml              Write an XML report to standard output\n"
-    "  --html <directory> Write an HTML report to the specified directory\n"
-    "  --sdk <name>       Use the specified SDK\n"
-    "  --old <path>       Path to the old API\n"
-    "  --new <path>       Path to the new API\n"
-    "  --args <args>      Compiler arguments for both API versions\n"
-    "  --oldargs <args>   Compiler arguments for the old API version\n"
-    "  --newargs <args>   Compiler arguments for the new API version\n"
-    "  --version          Show the version and exit\n",
+    "  --help                 Show this help message and exit\n"
+    "  --title                Title of the generated report\n"
+    "  --text                 Write a text report to standard output (the default)\n"
+    "  --xml                  Write an XML report to standard output\n"
+    "  --html <directory>     Write an HTML report to the specified directory\n"
+    "  --markdown <directory> Write a markdown report to the specified directory\n"
+    "  --content-only         Do not render chrome in the report (HTML only)"
+    "  --sdk <name>           Use the specified SDK\n"
+    "  --old <path>           Path to the old API\n"
+    "  --new <path>           Path to the new API\n"
+    "  --args <args>          Compiler arguments for both API versions\n"
+    "  --oldargs <args>       Compiler arguments for the old API version\n"
+    "  --newargs <args>       Compiler arguments for the new API version\n"
+    "  --version              Show the version and exit\n",
     [name UTF8String]);
 }
 
@@ -356,9 +360,11 @@ int main(int argc, char *argv[]) {
         NSString *title;
         NSString *linkMapPath;
         NSString *htmlOutputDirectory;
+        NSString *markdownOutputDirectory;
         NSMutableArray *oldCompilerArguments = [NSMutableArray arrayWithObjects:@"-x", @"objective-c-header", nil];
         NSMutableArray *newCompilerArguments = [oldCompilerArguments mutableCopy];
         int reportTypes = 0;
+        BOOL contentOnly = NO;
         int optchar;
 
         static struct option longopts[] = {
@@ -368,6 +374,8 @@ int main(int argc, char *argv[]) {
             { "text",         no_argument,        NULL,          'T' },
             { "xml",          no_argument,        NULL,          'X' },
             { "html",         required_argument,  NULL,          'H' },
+            { "markdown",     required_argument,  NULL,          'C' },
+            { "content-only", no_argument,        NULL,          'X' },
             { "sdk",          required_argument,  NULL,          's' },
             { "old",          required_argument,  NULL,          'o' },
             { "new",          required_argument,  NULL,          'n' },
@@ -398,6 +406,13 @@ int main(int argc, char *argv[]) {
                 case 'H':
                     reportTypes |= OCDReportTypeHTML;
                     htmlOutputDirectory = @(optarg);
+                    break;
+                case 'M':
+                    reportTypes |= OCDReportTypeMarkdown;
+                    markdownOutputDirectory = @(optarg);
+                    break;
+                case 'C':
+                    contentOnly = YES;
                     break;
                 case 's':
                     sdkName = @(optarg);
@@ -565,8 +580,13 @@ int main(int argc, char *argv[]) {
 
         if (reportTypes & OCDReportTypeHTML) {
             OCDLinkMap *linkMap = [[OCDLinkMap alloc] initWithPath:linkMapPath];
-            OCDHTMLReportGenerator *htmlGenerator = [[OCDHTMLReportGenerator alloc] initWithOutputDirectory:htmlOutputDirectory linkMap:linkMap];
+            OCDHTMLReportGenerator *htmlGenerator = [[OCDHTMLReportGenerator alloc] initWithOutputDirectory:htmlOutputDirectory linkMap:linkMap renderFullPage:!contentOnly];
             [htmlGenerator generateReportForDifferences:differences title:title];
+        }
+
+        if (reportTypes & OCDReportTypeMarkdown) {
+            OCDMarkdownReportGenerator *markdownGenerator = [[OCDMarkdownReportGenerator alloc]  initWithOutputDirectory:markdownOutputDirectory];
+            [markdownGenerator generateReportForDifferences:differences title:title];
         }
     }
 

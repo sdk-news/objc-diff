@@ -6,14 +6,16 @@
 @implementation OCDHTMLReportGenerator {
     NSString *_outputDirectory;
     OCDLinkMap *_linkMap;
+    BOOL _renderFullPage;
 }
 
-- (instancetype)initWithOutputDirectory:(NSString *)directory linkMap:(OCDLinkMap *)linkMap {
+- (instancetype)initWithOutputDirectory:(NSString *)directory linkMap:(OCDLinkMap *)linkMap renderFullPage:(BOOL)renderFullPage {
     if (!(self = [super init]))
         return nil;
 
     _outputDirectory = [directory copy];
     _linkMap = linkMap;
+    _renderFullPage = renderFullPage;
 
     return self;
 }
@@ -26,13 +28,16 @@
     }
 
     NSString *outputFile;
-    NSData *cssData = [self embeddedResouceDataWithName:@"apidiff.css"];
-    NSAssert(cssData != nil, @"apidiff.css not found in executable");
 
-    outputFile = [_outputDirectory stringByAppendingPathComponent:@"apidiff.css"];
-    if (![cssData writeToFile:outputFile options:0 error:&error]) {
-        fprintf(stderr, "Error writing HTML report to %s: %s\n", [outputFile UTF8String], [[error description] UTF8String]);
-        exit(1);
+    if (_renderFullPage) {
+        NSData *cssData = [self embeddedResouceDataWithName:@"apidiff.css"];
+        NSAssert(cssData != nil, @"apidiff.css not found in executable");
+
+        outputFile = [_outputDirectory stringByAppendingPathComponent:@"apidiff.css"];
+        if (![cssData writeToFile:outputFile options:0 error:&error]) {
+            fprintf(stderr, "Error writing HTML report to %s: %s\n", [outputFile UTF8String], [[error description] UTF8String]);
+            exit(1);
+        }
     }
 
     if (differences.modules.count == 1) {
@@ -42,15 +47,17 @@
         BOOL hasDifferences = NO;
         NSMutableString *html = [[NSMutableString alloc] init];
 
-        [html appendString:@"<html>\n<head>\n"];
+        if (_renderFullPage) {
+            [html appendString:@"<html>\n<head>\n"];
 
-        if (title != nil) {
-            [html appendFormat:@"<title>%@</title>\n", title];
+            if (title != nil) {
+                [html appendFormat:@"<title>%@</title>\n", title];
+            }
+
+            [html appendString:@"<link rel=\"stylesheet\" href=\"apidiff.css\" type=\"text/css\" />\n"];
+            [html appendString:@"<meta charset=\"utf-8\" />\n"];
+            [html appendString:@"</head>\n<body>\n"];
         }
-
-        [html appendString:@"<link rel=\"stylesheet\" href=\"apidiff.css\" type=\"text/css\" />\n"];
-        [html appendString:@"<meta charset=\"utf-8\" />\n"];
-        [html appendString:@"</head>\n<body>\n"];
 
         if (title != nil) {
             [html appendFormat:@"\n<h1>%@</h1>\n", title];
@@ -96,7 +103,9 @@
             [html appendString:@"<div class=\"message\">No differences</div>\n"];
         }
 
-        [html appendString:@"</body>\n</html>\n"];
+        if (_renderFullPage) {
+            [html appendString:@"</body>\n</html>\n"];
+        }
 
         outputFile = [_outputDirectory stringByAppendingPathComponent:@"index.html"];
         if (![html writeToFile:outputFile atomically:NO encoding:NSUTF8StringEncoding error:&error]) {
@@ -109,15 +118,17 @@
 - (void)generateFileForDifferences:(NSArray<OCDifference *> *)differences title:(NSString *)title path:(NSString *)outputFile {
     NSMutableString *html = [[NSMutableString alloc] init];
 
-    [html appendString:@"<html>\n<head>\n"];
+    if (_renderFullPage) {
+        [html appendString:@"<html>\n<head>\n"];
 
-    if (title != nil) {
-        [html appendFormat:@"<title>%@</title>\n", title];
+        if (title != nil) {
+            [html appendFormat:@"<title>%@</title>\n", title];
+        }
+
+        [html appendString:@"<link rel=\"stylesheet\" href=\"apidiff.css\" type=\"text/css\" />\n"];
+        [html appendString:@"<meta charset=\"utf-8\" />\n"];
+        [html appendString:@"</head>\n<body>\n"];
     }
-
-    [html appendString:@"<link rel=\"stylesheet\" href=\"apidiff.css\" type=\"text/css\" />\n"];
-    [html appendString:@"<meta charset=\"utf-8\" />\n"];
-    [html appendString:@"</head>\n<body>\n"];
 
     if (title != nil) {
         [html appendFormat:@"\n<h1>%@</h1>\n", title];
@@ -226,7 +237,9 @@
         [html appendString:@"</div>\n"];
     }
 
-    [html appendString:@"</body>\n</html>\n"];
+    if (_renderFullPage) {
+        [html appendString:@"</body>\n</html>\n"];
+    }
 
     NSError *error;
     if (![html writeToFile:outputFile atomically:NO encoding:NSUTF8StringEncoding error:&error]) {
