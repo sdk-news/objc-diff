@@ -423,8 +423,10 @@ int main(int argc, char *argv[]) {
         NSString *htmlOutputDirectory;
         NSMutableArray *oldCompilerArguments = [NSMutableArray arrayWithObjects:
                                                 @"-x", @"objective-c-header",
+                                                @"-I", @"/usr/local/opt/llvm/lib/clang/13.0.1/include/",
                                                 @"-DNS_FORMAT_ARGUMENT(A)=",
-                                                @"-D_Nullable_result=_Nullable",
+//                                                @"-D_Nullable_result=_Nullable",
+//                                                @"-std=c99",
                                                 nil];
         NSMutableArray *newCompilerArguments = [oldCompilerArguments mutableCopy];
         int reportTypes = 0;

@@ -7,7 +7,7 @@ import PackageDescription
 let package = Package(
     name: "sdk-diff",
     platforms: [
-        .macOS(.v10_12),
+        .macOS(.v12),
     ],
     products: [
         .executable(name: "ocdiff", targets: ["ocdiff"]),

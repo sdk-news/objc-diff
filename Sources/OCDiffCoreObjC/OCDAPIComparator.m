@@ -856,6 +856,10 @@
         case PLClangNullabilityExplicitlyUnspecified:
             [attributeStrings addObject:@"null_unspecified"];
             break;
+
+        case PLClangNullabilityNullableResult:
+            [attributeStrings addObject:@"nullable_result"];
+            break;
     }
 
     if (attributes & PLClangObjCPropertyAttributeGetter) {
@@ -888,6 +892,9 @@
 
         case PLClangNullabilityExplicitlyUnspecified:
             return @"null_unspecified";
+
+        case PLClangNullabilityNullableResult:
+            return @"nullable_result";
     }
 
     abort();
