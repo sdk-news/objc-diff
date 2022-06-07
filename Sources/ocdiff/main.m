@@ -307,7 +307,7 @@ static OCDAPIDifferences *DiffSDKs(NSString *oldSDKPath, NSArray *oldCompilerArg
 
                 PLClangTranslationUnit *newTU = TranslationUnitForSDKFramework(index, newPath, newCompilerArguments, printErrors);
                 PLClangTranslationUnit *oldTU = TranslationUnitForSDKFramework(index, oldPath, oldCompilerArguments, printErrors);
-                if (oldTU != nil && newTU != nil) {
+                if (oldTU != nil || newTU != nil) {
                     OCDAPISource *oldSource = [OCDAPISource APISourceWithTranslationUnit:oldTU containingPath:oldPath includeSystemHeaders:YES];
                     OCDAPISource *newSource = [OCDAPISource APISourceWithTranslationUnit:newTU containingPath:newPath includeSystemHeaders:YES];
                     [differences addObjectsFromArray:[OCDAPIComparator differencesBetweenOldAPISource:oldSource newAPISource:newSource]];
@@ -315,7 +315,7 @@ static OCDAPIDifferences *DiffSDKs(NSString *oldSDKPath, NSArray *oldCompilerArg
 
                 NSURL *newSI = SwiftInterfaceForSDKFramework(newPath);
                 NSURL *oldSI = SwiftInterfaceForSDKFramework(oldPath);
-                if (oldSI != nil && newSI != nil) {
+                if (oldSI != nil || newSI != nil) {
                     [differences addObjectsFromArray:[OCDSwiftInterfaceComparator compareModule:[frameworkName stringByDeletingPathExtension] oldInterfaceURL:oldSI newInterfaceURL:newSI]];
                 }
 
